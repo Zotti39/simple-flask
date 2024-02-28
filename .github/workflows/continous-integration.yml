@@ -35,12 +35,10 @@ jobs:
     # Por fim, a imagem é enviada para o repositório do Docker Hub. (GPTs answer)
     - name: Build and Push Docker Image
       run: |
-        docker buildx build --platform linux/amd64,linux/arm64 -t ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_id }} .
-        docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_id }}
+        docker buildx build --platform linux/amd64,linux/arm64 -t ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_id }} --push .
 
     # Agora para manter sempre uma imagem com a tag ":latest" no repositorio docker hub, iremos criar uma copia da ultima imagem "pushada" e renomea-la 
     # para "user/image:latest" 
     - name: Update new :latest tag
       run: |
-        docker tag ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_id }} ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
-        docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+        docker buildx build --platform linux/amd64,linux/arm64 -t ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest --push .
