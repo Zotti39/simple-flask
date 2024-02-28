@@ -1,0 +1,47 @@
+name: Continous Integration with GitHUb, GitHub Actions and DockerHub
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # Variavel usada para definir o nome da imagem desejada, para utiliza-la escreva "${{ env.DOCKER_IMAGE_NAME }}"
+    env:
+      DOCKER_IMAGE_NAME: simple-flask
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    # para fazer o login na plataforma do dockerHub usamos a login-action, built-in function do github actions
+    - name: Login to Docker hub
+      uses: docker/login-action@v3.0.0
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    # Esse proximo comando seta uma instancia buildx, que é responsavel por gerenciar o processo de construção da docker image
+    # Docker Buildx é usado para construir imagens Docker multi-plataforma (GPTs answer)
+    - name: Set up Docker Buildx
+      run: |
+        docker buildx create --use
+        docker buildx inspect --bootstrap
+
+    # Esses comandos utilizam o Docker Buildx para construir uma imagem Docker multiplataforma especificada pelo Dockerfile no diretório atual. 
+    # A imagem resultante é marcada com o repositório do Docker Hub, o nome da imagem e o SHA do commit do GitHub. 
+    # Por fim, a imagem é enviada para o repositório do Docker Hub. (GPTs answer)
+    - name: Build and Push Docker Image
+      run: |
+        docker buildx build --platform linux/amd64,linux/arm64 -t ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_id }} .
+        docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_id }}
+
+    # Agora para manter sempre uma imagem com a tag ":latest" no repositorio docker hub, iremos criar uma copia da ultima imagem "pushada" e renomea-la 
+    # para "user/image:latest" 
+    - name: Update new :latest tag
+      run: |
+        docker pull ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_id }}
+        docker tag ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_id }} ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
